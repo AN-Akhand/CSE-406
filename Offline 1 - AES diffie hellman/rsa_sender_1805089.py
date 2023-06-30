@@ -1,6 +1,6 @@
 import socket, sys
-import rsa
-import AES as aes
+import rsa_1805089 as rsa
+import AES_1805089 as aes
 from BitVector import *
 import random
 

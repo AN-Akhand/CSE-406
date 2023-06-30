@@ -1,5 +1,5 @@
-import rsa
-
+import rsa_1805089 as rsa
+ 
 alice = rsa.RSA(128)
 bob = rsa.RSA(128)
 not_alice = rsa.RSA(128)
@@ -16,6 +16,6 @@ n_c, n_s = not_alice.sign(m)
 
 d_c, d_s = bob.decrypt(c), bob.decrypt(s)
 
-print(d_s)
+print(d_c)
 
-print(bob.verify(d_c, d_s))
+#print(bob.verify(d_c, d_s))

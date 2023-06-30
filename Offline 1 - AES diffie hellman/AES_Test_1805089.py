@@ -1,4 +1,4 @@
-import AES as aes
+import AES_1805089 as aes
 from BitVector import *
 import time
 
@@ -18,9 +18,9 @@ print('Key: ')
 print("In ASCII: ", key)
 print("In Hex: ", BitVector(textstring = key).get_bitvector_in_hex())
 
-print()
-
 key = aes.handle_key(key)
+
+print()
 
 start = time.time()
 

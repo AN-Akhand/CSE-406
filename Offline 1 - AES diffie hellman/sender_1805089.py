@@ -1,6 +1,6 @@
 import socket, sys
-import diffie_hellman as dh
-import AES as aes
+import diffie_hellman_1805089 as dh
+import AES_1805089 as aes
 from BitVector import *
 from math import log2
 
@@ -37,9 +37,6 @@ def client():
     alice.generate_shared_secret_key()
 
     key = alice.secret_key
-
-    print(log2(key))
-
 
     key = aes.handle_key(key)
 

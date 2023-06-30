@@ -1,6 +1,6 @@
 import socket, sys
-import diffie_hellman as dh
-import AES as aes
+import diffie_hellman_1805089 as dh
+import AES_1805089 as aes
 from BitVector import *
 
 def deserialize(serialized):

@@ -99,7 +99,6 @@ class RSA:
     def sign(self, m):
         hashobj = hashlib.sha256(str(m).encode())
         hash = int.from_bytes(hashobj.digest(), 'big')
-        print(self.decrypt(hash))
         return encrypt(m, *self.other_key), encrypt(self.decrypt(hash), *self.other_key)
 
     def verify(self, m, s):
