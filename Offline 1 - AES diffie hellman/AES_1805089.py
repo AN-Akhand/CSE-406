@@ -70,6 +70,11 @@ def printAsMatrix(state):
         printRow(state[i*32:i*32+32])
         print()
 
+def printAll(message):
+    for m in message:
+        printAsMatrix(m)
+        print()
+
 def shiftRow(row, shift):
     for i in range(shift):
         row = row[8:] + row[:8]
@@ -116,6 +121,26 @@ def addRoundConstant(row, encryptRound):
         row[i*8:i*8+8] = row[i*8:i*8+8] ^ BitVector(intVal=encryptRound[i], size=8)
     return row
 
+def roundKey(key, encryptRound):
+    w0 = key[0:32]
+    w1 = key[32:64]
+    w2 = key[64:96]
+    w3 = key[96:128]
+    gw3 = addRoundConstant(subBytesRow(shiftRow(w3, 1)), [roundConst[encryptRound],0,0,0])
+    w4 = w0 ^ gw3
+    w5 = w1 ^ w4
+    w6 = w2 ^ w5
+    w7 = w3 ^ w6
+    return w4 + w5 + w6 + w7
+
+def createRoundKeys(key):
+    roundKeys = []
+    roundKeys.append(key)
+    for i in range(10):
+        roundKeys.append(roundKey(roundKeys[i], i))
+    for i in range(11):
+        roundKeys[i] = transpose(roundKeys[i])
+    return roundKeys
 
 def addRoundKey(state, key):
     for i in range(16):
@@ -123,7 +148,11 @@ def addRoundKey(state, key):
     return state
 
 
-
+def transpose(state):
+    newState = BitVector(size=128)
+    for i in range(4):
+        newState[i*32:i*32+32] = state[i*8:i*8+8] + state[i*8+32:i*8+40] + state[i*8+64:i*8+72] + state[i*8+96:i*8+104]
+    return newState
 
 
 def multBitVectors(a, b):
@@ -177,73 +206,100 @@ def decrypt(state, roundKeys):
     return transpose(state)
 
 
-def transpose(self, state):
-        newState = BitVector(size=128)
-        for i in range(4):
-            newState[i*32:i*32+32] = state[i*8:i*8+8] + state[i*8+32:i*8+40] + state[i*8+64:i*8+72] + state[i*8+96:i*8+104]
-        return newState
+def handle_key(x):
+    if type(x) == str:
+        key = BitVector(textstring=x)
+    elif type(x) == int:
+        key = BitVector(intVal=x)
+    if len(key) > 128:
+        print("Key too long, truncating to 128 bits")
+        key = key[0:128]
+    elif len(key) < 128:
+        print("Key too short, padding with 0s")
+        key.pad_from_right(128 - len(key))
+    return key
+
+def handle_message(x):
+    if(type(x) == str):
+        x = BitVector(textstring=x)
+    elif (type(x) == bytes):
+        x = BitVector(rawbytes=x)
+    message = []
+    l = len(x) // 128
+    m = len(x) % 128
+    for i in range(l):
+        message.append(x[i*128:i*128+128])
+    if m != 0:
+        temp = x[l*128:]
+        temp.pad_from_right(128 - m)
+        message.append(temp)
+    temp = BitVector(intVal=0, size=128)
+    if m != 0:
+        temp[-8:] = BitVector(intVal=128 - m, size=8)
+    else:
+        temp[-8:] = BitVector(intVal=0, size=8)
+    message.append(temp)
+    for i in range(len(message)):
+        message[i] = transpose(message[i])
+    return message
 
 
-class AES:
-    def __init__(self, key_size):
-        self.key_size = key_size
-        self.rounds = key_size // 32 + 6
-        self.round_keys = []
+def encrypt_message(message, roundKeys):
+    message = handle_message(message)
+    encryptedMessage = []
+    for i in range(len(message)):
+        encryptedMessage.append(encrypt(message[i], roundKeys))
+    return encryptedMessage
 
-    def transpose(self, state):
-        newState = BitVector(size=self.key_size)
-        for i in range(4):
-            newState[i*32:i*32+32] = state[i*8:i*8+8] + state[i*8+32:i*8+40] + state[i*8+64:i*8+72] + state[i*8+96:i*8+104]
+def decrypt_message(message, roundKeys):
+    decryptedMessage = []
+    for i in range(len(message)):
+        decryptedMessage.append(decrypt(message[i], roundKeys))
+    m = decryptedMessage[-1][-8:].int_val()
+    message = BitVector(size = (len(decryptedMessage) - 1) * 128 - m)
+    decryptedMessage = decryptedMessage[:-1]
+    for i in range(len(decryptedMessage) - 1):
+        message[i*128:i*128+128] = decryptedMessage[i]
+    message[-(128 - m) : ] = decryptedMessage[-1][0:128 - m]
+    return message
 
-    def round_key(self, key, round_num):
-        w0 = key[0:32]
-        w1 = key[32:64]
-        w2 = key[64:96]
-        w3 = key[96:128]
-        gw3 = add_round_constant(sub_bytes_row(shift_row(w3, 1)), [round_const[round_num], 0, 0, 0])
-        w4 = w0 ^ gw3
-        w5 = w1 ^ w4
-        w6 = w2 ^ w5
-        w7 = w3 ^ w6
-        return w4 + w5 + w6 + w7
+def to_byte_array(message):
+    byte_array = bytearray()
 
-    def key_expansion(self, key):
-        self.round_keys.append(key)
-        for i in range(self.rounds):
-            self.round_keys.append(round_key(self.round_keys[i], i))
+    for i in range(0, len(message), 8):
+        byte_array.append(int(message[i:i+8]))
 
-        for i in range(self.rounds + 1):
-            self.round_keys[i] = self.transpose(self.round_keys[i])
+    return byte_array
 
+def get_cipher_in_ascii(cipher):
+    temp = BitVector(size=len(cipher) * 128)
+    for i in range(len(cipher)):
+        temp[i*128:i*128+128] = transpose(cipher[i])
+    return temp.get_bitvector_in_ascii()
 
-    def encrypt(self, message):
-        message = add_round_key(message, self.round_keys[0])
-        for i in range(1, self.rounds):
-            message = encrypt_round(message, self.round_keys[i])
-        message = sub_bytes(message)
-        message = shift_rows(message)
-        message = add_round_key(message, self.round_keys[self.rounds])
-        return message
+def get_cipher_in_hex(cipher):
+    temp = BitVector(size=len(cipher) * 128)
+    for i in range(len(cipher)):
+        temp[i*128:i*128+128] = cipher[i]
+    return temp.get_bitvector_in_hex()
 
-    
-
-#message = handleMessageInput()
-
-key = handleKeyInput()
-plaintext = "Two One Nine Two"
-state = BitVector(textstring=plaintext)
-state = transpose(state)
-roundKeys = createRoundKeys(key)
-
-print("plaintext:",plaintext)
-
-state = encrypt(state, roundKeys)
-
-printAsMatrix(state)
-
-state = decrypt(state, roundKeys)
-
-print("plaintext:",state.get_bitvector_in_ascii())
-
-
-
+#key = handle_key(input("Enter key: "))
+#message = handle_message(input("Enter message: "))
+#roundKeys = createRoundKeys(key)
+#
+#encryptedMessage = []
+#for i in range(len(message)):
+#    encryptedMessage.append(encrypt(message[i], roundKeys))
+#
+#decryptedMessage = []
+#for i in range(len(encryptedMessage)):
+#    decryptedMessage.append(decrypt(encryptedMessage[i], roundKeys))
+#
+#
+#for i in range(len(decryptedMessage)):
+#    decryptedMessage[i] = decryptedMessage[i].get_bitvector_in_ascii()
+#
+#
+#print("Decrypted message: ")
+#for i in range(len(decryptedMessage)):
+#    print(decryptedMessage[i], end = "")
