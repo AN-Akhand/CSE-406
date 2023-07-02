@@ -1,8 +1,12 @@
 import rsa_1805089 as rsa
- 
-alice = rsa.RSA(128)
-bob = rsa.RSA(128)
-not_alice = rsa.RSA(128)
+
+t = False
+
+key_size = 128 
+
+alice = rsa.RSA(key_size)
+bob = rsa.RSA(key_size)
+not_alice = rsa.RSA(key_size)
 
 alice.set_public_key(*bob.public_key)
 bob.set_public_key(*alice.public_key)
@@ -14,8 +18,11 @@ c, s = alice.sign(m)
 
 n_c, n_s = not_alice.sign(m)
 
-d_c, d_s = bob.decrypt(c), bob.decrypt(s)
+if t == True:
+    d_c, d_s = bob.decrypt(n_c), bob.decrypt(n_s)
+else:
+    d_c, d_s = bob.decrypt(c), bob.decrypt(s)
 
 print(d_c)
 
-#print(bob.verify(d_c, d_s))
+print(bob.verify(d_c, d_s))

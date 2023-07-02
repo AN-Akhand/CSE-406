@@ -1,5 +1,5 @@
 import random
-from math import gcd
+from math import gcd, log2
 import hashlib  
 
 def primes(sieve_size):
@@ -85,6 +85,7 @@ def decrypt(c, d, n):
 
 class RSA:
     def __init__(self, key_size):
+        self.key_size = key_size
         self.public_key, self.private_key = generate_key(key_size)
 
     def set_public_key(self, e, n):
@@ -97,11 +98,11 @@ class RSA:
         return decrypt(c, *self.private_key)
 
     def sign(self, m):
-        hashobj = hashlib.sha256(str(m).encode())
-        hash = int.from_bytes(hashobj.digest(), 'big')
-        return encrypt(m, *self.other_key), encrypt(self.decrypt(hash), *self.other_key)
+        hashobj = hashlib.sha1(str(m).encode())
+        hash = int.from_bytes(hashobj.digest(), 'big') % (2 ** (self.key_size - 1))
+        return self.encrypt(m), self.encrypt(self.decrypt(hash))
 
     def verify(self, m, s):
-        hashobj = hashlib.sha256(str(m).encode())
-        hash = int.from_bytes(hashobj.digest(), 'big')
+        hashobj = hashlib.sha1(str(m).encode())
+        hash = int.from_bytes(hashobj.digest(), 'big')  % (2 ** (self.key_size - 1))
         return self.encrypt(s) == hash

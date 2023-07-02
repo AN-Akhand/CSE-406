@@ -280,7 +280,7 @@ def get_cipher_in_ascii(cipher):
 def get_cipher_in_hex(cipher):
     temp = BitVector(size=len(cipher) * 128)
     for i in range(len(cipher)):
-        temp[i*128:i*128+128] = cipher[i]
+        temp[i*128:i*128+128] = transpose(cipher[i])
     return temp.get_bitvector_in_hex()
 
 #key = handle_key(input("Enter key: "))
